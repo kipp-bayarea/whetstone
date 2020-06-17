@@ -1,12 +1,13 @@
-from whetstone import Authenticate, HTTPRequest
-import os
+from whetstone import Whetstone
 import json
 
-api_key = os.getenv("API_TOKEN")
-auth = Authenticate(api_key)
-token = auth.GetToken()
+
+def main():
+    api = Whetstone()
+    users = api.get_all("users")
+    with open("users.json", "w") as f:
+        f.write(json.dumps(users))
 
 
-meetings = HTTPRequest("meetings", token, api_key).GetData()
-with open("meetings.json", "w") as f:
-    f.write(json.dumps(meetings))
+if __name__ == "__main__":
+    main()
