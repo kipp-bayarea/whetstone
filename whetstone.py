@@ -39,8 +39,11 @@ class Whetstone:
         encoded_credentials_string = str(encoded_credentials, "utf-8")
         return "Basic " + encoded_credentials_string
 
-    def get_all(self, endpoint):
-        endpoint_url = f"{self.url}/external/{endpoint}"
+    def get_all(self, endpoint, tag=False):
+        if tag:
+            endpoint_url = f"{self.url}/external/generic-tags/{endpoint}"
+        else:
+            endpoint_url = f"{self.url}/external/{endpoint}"
         headers = {"Authorization": f"Bearer {self.token}"}
         response = requests.get(endpoint_url, headers=headers)
         if response.status_code == 200:
