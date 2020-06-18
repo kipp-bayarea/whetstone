@@ -1,4 +1,5 @@
 import os
+import json
 import requests
 import base64
 import pandas as pd
@@ -18,6 +19,7 @@ class Whetstone:
     def __init__(self, sql, qa=False):
         self.endpoint = self.classname()
         self.table_name = f"whetstone_{self.endpoint}"
+        self.filename = f"data/{self.endpoint}.json"
         self.client_id = os.getenv("CLIENT_ID")
         self.client_secret = os.getenv("CLIENT_SECRET")
         self.columns = []
@@ -66,8 +68,16 @@ class Whetstone:
     def _write_to_db(self, df):
         self.sql.insert_into(self.table_name, df, chunksize=10000, if_exists="replace")
 
+    def _write_to_json(self, data):
+        if os.path.exists(self.filename):
+            os.remove(self.filename)
+        with open(self.filename, "w") as f:
+            json.dump(data, f, indent=2)
+
     def import_all(self):
         data = self.get_all()
+        self._write_to_json(data)
+        self.additional_imports(data)
         df = self._process_and_filter_records(data)
         self._write_to_db(df)
 
@@ -87,6 +97,9 @@ class Whetstone:
             date_types = {col: "datetime64[ns]" for col in self.dates}
             df = df.astype(date_types)
         return df
+
+    def additional_imports(self, records):
+        pass
 
 
 class Users(Whetstone):
@@ -116,3 +129,92 @@ class Users(Whetstone):
             record["school"] = record.get("defaultInformation").get("school")
             record["course"] = record.get("defaultInformation").get("course")
         return records
+
+
+class Schools(Whetstone):
+    def __init__(self, sql):
+        super().__init__(sql)
+        self.columns = [
+            "id",
+            "internalId",
+            "name",
+            "abbreviation",
+            "archivedAt",
+            "principal",
+            "gradeSpan",
+            "lowGrade",
+            "highGrade",
+            "district",
+            "phone",
+            "address",
+            "city",
+            "cluster",
+            "region",
+            "state",
+            "zip",
+            "lastModified",
+        ]
+        self.dates = ["lastModified"]
+
+    def _preprocess_records(self, records):
+        for record in records:
+            record["id"] = record.get("_id")
+        return records
+
+    def additional_imports(self, records):
+        group_records = []
+        group_member_records = []
+        for record in records:
+            school = record["_id"]
+            observationGroups = record.get("observationGroups")
+            if observationGroups:
+                for group in observationGroups:
+                    record = {
+                        "id": group.get("_id"),
+                        "name": group.get("name"),
+                        "school": school,
+                        "lastModified": group.get("lastModified"),
+                    }
+                    group_records.append(record)
+
+                    observers = group.get("observers")
+                    observees = group.get("observees")
+
+                    if observers:
+                        for member in observers:
+                            member_record = {
+                                "id": member.get("_id"),
+                                "name": member.get("name"),
+                                "role": "observer",
+                                "observationGroup": group.get("_id"),
+                                "school": school,
+                            }
+                            group_member_records.append(member_record)
+
+                    if observees:
+                        for member in observees:
+                            member_record = {
+                                "id": member.get("_id"),
+                                "name": member.get("name"),
+                                "role": "observee",
+                                "observationGroup": group.get("_id"),
+                                "school": school,
+                            }
+                            group_member_records.append(member_record)
+
+        group_df = pd.DataFrame(group_records)
+        self._convert_dates(group_df)
+        group_member_df = pd.DataFrame(group_member_records)
+        self.sql.insert_into(
+            "whetstone_ObservationGroups",
+            group_df,
+            chunksize=10000,
+            if_exists="replace",
+        )
+        self.sql.insert_into(
+            "whetstone_ObservationGroupMembers",
+            group_member_df,
+            chunksize=10000,
+            if_exists="replace",
+        )
+
