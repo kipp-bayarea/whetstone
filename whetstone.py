@@ -305,8 +305,6 @@ class Observations(Whetstone):
             "quickHits",
             "score",
             "scoreAveragedByStrand",
-            # magic notes
-            # observation scores
         ]
 
     def additional_imports(self, records):
@@ -335,3 +333,32 @@ class Observations(Whetstone):
 
         self.extract_subrecords(score_records, "ObservationScores")
         self.extract_subrecords(note_records, "ObservationMagicNotes")
+
+
+class Measurements(Whetstone):
+    def __init__(self, sql):
+        super().__init__(sql)
+        self.columns = [
+            "_id",
+            "name",
+            "description",
+            "measurementType",
+            "isPercentage",
+            "created",
+            "district",
+            "scaleMin",
+            "scaleMax",
+            "lastModified",
+            "rowStyle",
+        ]
+
+    def additional_imports(self, records):
+        measurement_options_records = []
+        for record in records:
+            measurement = record.get("_id")
+            options = record.get("measurementOptions")
+            if options:
+                options = [dict(item, measurment=measurement) for item in options]
+                measurement_options_records.extend(options)
+        self.extract_subrecords(measurement_options_records, "MeasurementOptions")
+
