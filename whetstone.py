@@ -12,12 +12,8 @@ class CredentialError(Exception):
 
 
 class Whetstone:
-    @classmethod
-    def classname(cls):
-        return cls.__name__
-
     def __init__(self, sql, qa=False):
-        self.endpoint = self.classname()
+        self.endpoint = self.__class__.__name__
         self.table_name = f"whetstone_{self.endpoint}"
         self.filename = f"data/{self.endpoint}.json"
         self.client_id = os.getenv("CLIENT_ID")
