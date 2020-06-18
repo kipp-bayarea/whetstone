@@ -101,6 +101,12 @@ class Whetstone:
     def additional_imports(self, records):
         pass
 
+    def extract_subrecords(self, subrecords, tablename):
+        df = pd.DataFrame(subrecords)
+        self.sql.insert_into(
+            f"whetstone_{tablename}", df, chunksize=10000, if_exists="replace"
+        )
+
 
 class Users(Whetstone):
     def __init__(self, sql):
@@ -275,25 +281,7 @@ class Meetings(Whetstone):
                     field["meeting"] = record.get("_id")
                     additional_field_records.append(field)
 
-        observations_df = pd.DataFrame(observation_records)
-        self.sql.insert_into(
-            "whetstone_MeetingObservations",
-            observations_df,
-            chunksize=10000,
-            if_exists="replace",
-        )
-        participants_df = pd.DataFrame(participant_records)
-        self.sql.insert_into(
-            "whetstone_MeetingParticipants",
-            participants_df,
-            chunksize=10000,
-            if_exists="replace",
-        )
-        additional_fields_df = pd.DataFrame(additional_field_records)
-        self.sql.insert_into(
-            "whetstone_MeetingAdditionalFields",
-            additional_fields_df,
-            chunksize=10000,
-            if_exists="replace",
-        )
+        self.extract_subrecords(observation_records, "MeetingObservations")
+        self.extract_subrecords(participant_records, "MeetingParticipants")
+        self.extract_subrecords(additional_field_records, "MeetingAdditionalFields")
 
