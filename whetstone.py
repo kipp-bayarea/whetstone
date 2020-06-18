@@ -240,9 +240,6 @@ class Meetings(Whetstone):
             "district",
             "created",
             "lastModified",
-            # participants
-            # observations
-            # additionalFields
         ]
         self.dates = ["created", "date", "lastModified"]
 
@@ -251,3 +248,53 @@ class Meetings(Whetstone):
             record["id"] = record.get("_id")
             record["creator"] = record.get("creator").get("_id")
         return records
+
+    def additional_imports(self, records):
+        # extract additionalFields
+        observation_records = []
+        participant_records = []
+        additional_field_records = []
+        for record in records:
+            observations = record.get("observations")
+            if observations:
+                for observation in observations:
+                    observation_record = {
+                        "meeting": record.get("_id"),
+                        "observation": observation,
+                    }
+                    observation_records.append(observation_record)
+
+            participants = record.get("participants")
+            if participants:
+                for participant in participants:
+                    participant["meeting"] = record.get("_id")
+                    participant_records.append(participant)
+
+            additional_fields = record.get("additionalFields")
+            if additional_fields:
+                for field in additional_fields:
+                    field["meeting"] = record.get("_id")
+                    additional_field_records.append(field)
+
+        observations_df = pd.DataFrame(observation_records)
+        self.sql.insert_into(
+            "whetstone_MeetingObservations",
+            observations_df,
+            chunksize=10000,
+            if_exists="replace",
+        )
+        participants_df = pd.DataFrame(participant_records)
+        self.sql.insert_into(
+            "whetstone_MeetingParticipants",
+            participants_df,
+            chunksize=10000,
+            if_exists="replace",
+        )
+        additional_fields_df = pd.DataFrame(additional_field_records)
+        self.sql.insert_into(
+            "whetstone_MeetingAdditionalFields",
+            additional_fields_df,
+            chunksize=10000,
+            if_exists="replace",
+        )
+
