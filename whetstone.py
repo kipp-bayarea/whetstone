@@ -308,3 +308,30 @@ class Observations(Whetstone):
             # magic notes
             # observation scores
         ]
+
+    def additional_imports(self, records):
+        score_records = []
+        note_records = []
+        for record in records:
+            observation_scores = record.get("observationScores")
+            if observation_scores:
+                for score in observation_scores:
+                    score_record = {
+                        "observation": record.get("_id"),
+                        "measurement": score.get("measurement"),
+                        "measurementGroup": score.get("measurementGroup"),
+                        "valueScore": score.get("valueScore"),
+                        "valueText": score.get("valueText"),
+                        "percentage": score.get("percentage"),
+                        "lastModified": score.get("lastModified"),
+                    }
+                    score_records.append(score_record)
+
+            magic_notes = record.get("magicNotes")
+            if magic_notes:
+                for note in magic_notes:
+                    note["observation"] = record.get("_id")
+                    note_records.append(note)
+
+        self.extract_subrecords(score_records, "ObservationScores")
+        self.extract_subrecords(note_records, "ObservationMagicNotes")
