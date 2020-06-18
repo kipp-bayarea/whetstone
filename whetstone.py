@@ -23,7 +23,16 @@ class Whetstone:
         self.client_id = os.getenv("CLIENT_ID")
         self.client_secret = os.getenv("CLIENT_SECRET")
         self.columns = []
-        self.dates = []
+        self.dates = [
+            "archivedAt",
+            "created",
+            "date",
+            "firstPublished",
+            "lastActivity",
+            "lastModified",
+            "lastPublished",
+            "observedAt",
+        ]
         self.tag = False
         self.sql = sql
         if qa:
@@ -93,8 +102,9 @@ class Whetstone:
         return df
 
     def _convert_dates(self, df):
-        if self.dates:
-            date_types = {col: "datetime64[ns]" for col in self.dates}
+        dates = [col for col in df.columns if col in self.dates]
+        if dates:
+            date_types = {col: "datetime64[ns]" for col in dates}
             df = df.astype(date_types)
         return df
 
@@ -103,6 +113,7 @@ class Whetstone:
 
     def extract_subrecords(self, subrecords, tablename):
         df = pd.DataFrame(subrecords)
+        self._convert_dates(df)
         self.sql.insert_into(
             f"whetstone_{tablename}", df, chunksize=10000, if_exists="replace"
         )
@@ -129,7 +140,6 @@ class Users(Whetstone):
             "course",
             "coach",
         ]
-        self.dates = ["created", "lastActivity", "lastModified"]
 
     def _preprocess_records(self, records):
         for record in records:
@@ -162,7 +172,6 @@ class Schools(Whetstone):
             "zip",
             "lastModified",
         ]
-        self.dates = ["lastModified"]
 
     def _preprocess_records(self, records):
         for record in records:
@@ -210,21 +219,8 @@ class Schools(Whetstone):
                             }
                             group_member_records.append(member_record)
 
-        group_df = pd.DataFrame(group_records)
-        self._convert_dates(group_df)
-        group_member_df = pd.DataFrame(group_member_records)
-        self.sql.insert_into(
-            "whetstone_ObservationGroups",
-            group_df,
-            chunksize=10000,
-            if_exists="replace",
-        )
-        self.sql.insert_into(
-            "whetstone_ObservationGroupMembers",
-            group_member_df,
-            chunksize=10000,
-            if_exists="replace",
-        )
+        self.extract_subrecords(group_records, "ObservationGroups")
+        self.extract_subrecords(group_member_records, "ObservationGroupMembers")
 
 
 class Meetings(Whetstone):
@@ -247,7 +243,6 @@ class Meetings(Whetstone):
             "created",
             "lastModified",
         ]
-        self.dates = ["created", "date", "lastModified"]
 
     def _preprocess_records(self, records):
         for record in records:
