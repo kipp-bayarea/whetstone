@@ -1,9 +1,9 @@
 from whetstone import Users
-from sqlsorcery import SQLite
+from sqlsorcery import MSSQL
 
 
 def main():
-    sql = SQLite(path="test.db")
+    sql = MSSQL()
     Users(sql).import_all()
 
 
