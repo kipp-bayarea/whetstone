@@ -250,7 +250,6 @@ class Meetings(Whetstone):
         return records
 
     def additional_imports(self, records):
-        # extract additionalFields
         observation_records = []
         participant_records = []
         additional_field_records = []
