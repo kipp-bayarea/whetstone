@@ -99,9 +99,8 @@ class Whetstone:
         return df
 
     def _convert_dates(self, df):
-        dates = [col for col in df.columns if col in self.dates]
-        if dates:
-            date_types = {col: "datetime64[ns]" for col in dates}
+        date_types = {col: "datetime64[ns]" for col in df.columns if col in self.dates}
+        if date_types:
             df = df.astype(date_types)
         return df
 
