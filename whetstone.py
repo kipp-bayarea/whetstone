@@ -107,6 +107,7 @@ class Users(Whetstone):
         super().__init__(sql)
         self.columns = [
             "id",
+            "internalId",
             "activeDistrict",
             "archivedAt",
             "created",
@@ -120,6 +121,7 @@ class Users(Whetstone):
             "last",
             "school",
             "course",
+            "coach",
         ]
         self.dates = ["created", "lastActivity", "lastModified"]
 
@@ -218,3 +220,34 @@ class Schools(Whetstone):
             if_exists="replace",
         )
 
+
+class Meetings(Whetstone):
+    def __init__(self, sql):
+        super().__init__(sql)
+        self.columns = [
+            "id",
+            "isWeeklyDataMeeting",
+            "locked",
+            "private",
+            "signatureRequired",
+            "course",
+            "date",
+            "grade",
+            "school",
+            "title",
+            "type",
+            "creator",
+            "district",
+            "created",
+            "lastModified",
+            # participants
+            # observations
+            # additionalFields
+        ]
+        self.dates = ["created", "date", "lastModified"]
+
+    def _preprocess_records(self, records):
+        for record in records:
+            record["id"] = record.get("_id")
+            record["creator"] = record.get("creator").get("_id")
+        return records
