@@ -99,6 +99,7 @@ class Whetstone:
         df = df.reindex(columns=self.columns)
         df = df.astype("object")
         df = self._convert_dates(df)
+        df.rename(columns={"_id": "id"}, inplace=True)
         return df
 
     def _convert_dates(self, df):
@@ -123,7 +124,7 @@ class Users(Whetstone):
     def __init__(self, sql):
         super().__init__(sql)
         self.columns = [
-            "id",
+            "_id",
             "internalId",
             "activeDistrict",
             "archivedAt",
@@ -143,7 +144,6 @@ class Users(Whetstone):
 
     def _preprocess_records(self, records):
         for record in records:
-            record["id"] = record.get("_id")
             record["school"] = record.get("defaultInformation").get("school")
             record["course"] = record.get("defaultInformation").get("course")
         return records
@@ -153,7 +153,7 @@ class Schools(Whetstone):
     def __init__(self, sql):
         super().__init__(sql)
         self.columns = [
-            "id",
+            "_id",
             "internalId",
             "name",
             "abbreviation",
@@ -172,11 +172,6 @@ class Schools(Whetstone):
             "zip",
             "lastModified",
         ]
-
-    def _preprocess_records(self, records):
-        for record in records:
-            record["id"] = record.get("_id")
-        return records
 
     def additional_imports(self, records):
         group_records = []
@@ -227,7 +222,7 @@ class Meetings(Whetstone):
     def __init__(self, sql):
         super().__init__(sql)
         self.columns = [
-            "id",
+            "_id",
             "isWeeklyDataMeeting",
             "locked",
             "private",
@@ -246,7 +241,6 @@ class Meetings(Whetstone):
 
     def _preprocess_records(self, records):
         for record in records:
-            record["id"] = record.get("_id")
             record["creator"] = record.get("creator").get("_id")
         return records
 
@@ -280,3 +274,37 @@ class Meetings(Whetstone):
         self.extract_subrecords(participant_records, "MeetingParticipants")
         self.extract_subrecords(additional_field_records, "MeetingAdditionalFields")
 
+
+class Observations(Whetstone):
+    def __init__(self, sql):
+        super().__init__(sql)
+        self.columns = [
+            "_id",
+            "observedAt",
+            "observedUntil",
+            "firstPublished",
+            "lastPublished",
+            "viewedByTeacher",
+            "isPublished",
+            "archivedAt",
+            "requireSignature",
+            "locked",
+            "isPrivate",
+            "signed",
+            "observer",
+            "rubric",
+            "teacher",
+            "district",
+            "observationType",
+            "observationModule",
+            "observationtag1",
+            "observationtag2",
+            "observationtag3",
+            "created",
+            "lastModified",
+            "quickHits",
+            "score",
+            "scoreAveragedByStrand",
+            # magic notes
+            # observation scores
+        ]

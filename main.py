@@ -1,4 +1,4 @@
-from whetstone import Users, Schools, Meetings
+from whetstone import Users, Schools, Meetings, Observations
 from sqlsorcery import MSSQL
 
 
@@ -7,6 +7,7 @@ def main():
     Users(sql).import_all()
     Schools(sql).import_all()
     Meetings(sql).import_all()
+    Observations(sql).import_all()
 
 
 if __name__ == "__main__":
