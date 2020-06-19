@@ -283,32 +283,41 @@ class Observations(Whetstone):
             "scoreAveragedByStrand",
         ]
 
-    def additional_imports(self, records):
-        score_records = []
-        note_records = []
+    def _preprocess_records(self, records):
+        models = {
+            "Observations": [],
+            "ObservationScores": [],
+            "ObservationMagicNotes": [],
+        }
         for record in records:
-            observation_scores = record.get("observationScores")
-            if observation_scores:
-                for score in observation_scores:
-                    score_record = {
-                        "observation": record.get("_id"),
-                        "measurement": score.get("measurement"),
-                        "measurementGroup": score.get("measurementGroup"),
-                        "valueScore": score.get("valueScore"),
-                        "valueText": score.get("valueText"),
-                        "percentage": score.get("percentage"),
-                        "lastModified": score.get("lastModified"),
+            record_id = record.get("_id")
+            observation = {
+                k: v["_id"] if type(v) is dict else v
+                for (k, v) in record.items()
+                if k in self.columns
+            }
+            models["Observations"].append(observation)
+            scores = record.get("observationScores")
+
+            if scores:
+                scores = [
+                    {
+                        "observation": record_id,
+                        "measurement": item.get("measurement"),
+                        "measurementGroup": item.get("measurementGroup"),
+                        "valueScore": item.get("valueScore"),
+                        "valueText": item.get("valueText"),
+                        "percentage": item.get("percentage"),
+                        "lastModified": item.get("lastModified"),
                     }
-                    score_records.append(score_record)
-
-            magic_notes = record.get("magicNotes")
-            if magic_notes:
-                for note in magic_notes:
-                    note["observation"] = record.get("_id")
-                    note_records.append(note)
-
-        self.extract_subrecords(score_records, "ObservationScores")
-        self.extract_subrecords(note_records, "ObservationMagicNotes")
+                    for item in scores
+                ]
+                models["ObservationScores"].extend(scores)
+            notes = record.get("magicNotes")
+            if notes:
+                notes = [dict(item, observation=record_id) for item in notes]
+                models["ObservationMagicNotes"].extend(notes)
+        return models
 
 
 class Measurements(Whetstone):
