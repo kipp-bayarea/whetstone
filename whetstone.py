@@ -217,39 +217,39 @@ class Meetings(Whetstone):
         ]
 
     def _preprocess_records(self, records):
+        models = {
+            "Meetings": [],
+            "MeetingObservations": [],
+            "MeetingParticipants": [],
+            "MeetingAdditionalFields": [],
+        }
         for record in records:
+            record_id = record.get("_id")
             record["creator"] = record.get("creator").get("_id")
-        return records
+            meeting = {k: v for (k, v) in record.items() if k in self.columns}
+            models["Meetings"].append(meeting)
 
-    def additional_imports(self, records):
-        observation_records = []
-        participant_records = []
-        additional_field_records = []
-        for record in records:
             observations = record.get("observations")
             if observations:
-                for observation in observations:
-                    observation_record = {
-                        "meeting": record.get("_id"),
-                        "observation": observation,
-                    }
-                    observation_records.append(observation_record)
+                observations = [
+                    dict(meeting=record_id, observation=observation)
+                    for observation in observations
+                ]
+                models["MeetingObservations"].extend(observations)
 
             participants = record.get("participants")
             if participants:
-                for participant in participants:
-                    participant["meeting"] = record.get("_id")
-                    participant_records.append(participant)
+                participants = [dict(item, meeting=record_id) for item in participants]
+                models["MeetingParticipants"].extend(participants)
 
             additional_fields = record.get("additionalFields")
             if additional_fields:
-                for field in additional_fields:
-                    field["meeting"] = record.get("_id")
-                    additional_field_records.append(field)
+                additional_fields = [
+                    dict(item, meeting=record_id) for item in additional_fields
+                ]
+                models["MeetingAdditionalFields"].extend(additional_fields)
 
-        self.extract_subrecords(observation_records, "MeetingObservations")
-        self.extract_subrecords(participant_records, "MeetingParticipants")
-        self.extract_subrecords(additional_field_records, "MeetingAdditionalFields")
+        return models
 
 
 class Observations(Whetstone):
