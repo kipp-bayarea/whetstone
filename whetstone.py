@@ -119,10 +119,13 @@ class Users(Whetstone):
         ]
 
     def _preprocess_records(self, records):
+        models = {"Users": []}
         for record in records:
             record["school"] = record.get("defaultInformation").get("school")
             record["course"] = record.get("defaultInformation").get("course")
-        return records
+            user = {k: v for (k, v) in record.items() if k in self.columns}
+            models["Users"].append(user)
+        return models
 
 
 class Schools(Whetstone):
