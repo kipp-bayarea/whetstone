@@ -31,10 +31,7 @@ class Whetstone:
         ]
         self.tag = False
         self.sql = sql
-        if qa:
-            subdomain = "api-qa"
-        else:
-            subdomain = "api"
+        subdomain = "api-qa" if qa else "api"
         self.url = f"https://{subdomain}.whetstoneeducation.com"
         self.token = self._authorize()
 
