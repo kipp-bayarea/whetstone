@@ -152,49 +152,47 @@ class Schools(Whetstone):
             "lastModified",
         ]
 
-    def additional_imports(self, records):
-        group_records = []
-        group_member_records = []
+    def _preprocess_records(self, records):
+        models = {"Schools": [], "ObservationGroups": [], "ObservationGroupMembers": []}
         for record in records:
-            school = record["_id"]
-            observationGroups = record.get("observationGroups")
-            if observationGroups:
-                for group in observationGroups:
-                    record = {
-                        "id": group.get("_id"),
-                        "name": group.get("name"),
-                        "school": school,
-                        "lastModified": group.get("lastModified"),
+            record_id = record.get("_id")
+            school = {k: v for (k, v) in record.items() if k in self.columns}
+            models["Schools"].append(school)
+            groups = record.get("observationGroups")
+            if groups:
+                for group in groups:
+                    observers = self._extract_group_members(
+                        group, "observers", record_id
+                    )
+                    models["ObservationGroupMembers"].extend(observers)
+                    observees = self._extract_group_members(
+                        group, "observees", record_id
+                    )
+                    models["ObservationGroupMembers"].extend(observees)
+
+                groups = [
+                    {
+                        "id": item.get("_id"),
+                        "name": item.get("name"),
+                        "school": record_id,
+                        "lastModified": item.get("lastModified"),
                     }
-                    group_records.append(record)
+                    for item in groups
+                ]
+                models["ObservationGroups"].extend(groups)
+        return models
 
-                    observers = group.get("observers")
-                    observees = group.get("observees")
-
-                    if observers:
-                        for member in observers:
-                            member_record = {
-                                "id": member.get("_id"),
-                                "name": member.get("name"),
-                                "role": "observer",
-                                "observationGroup": group.get("_id"),
-                                "school": school,
-                            }
-                            group_member_records.append(member_record)
-
-                    if observees:
-                        for member in observees:
-                            member_record = {
-                                "id": member.get("_id"),
-                                "name": member.get("name"),
-                                "role": "observee",
-                                "observationGroup": group.get("_id"),
-                                "school": school,
-                            }
-                            group_member_records.append(member_record)
-
-        self.extract_subrecords(group_records, "ObservationGroups")
-        self.extract_subrecords(group_member_records, "ObservationGroupMembers")
+    def _extract_group_members(self, group, role, record_id):
+        members = [
+            dict(
+                item,
+                school=record_id,
+                role=role[:-1],
+                observationGroup=group.get("_id"),
+            )
+            for item in group.get(role)
+        ]
+        return members
 
 
 class Meetings(Whetstone):
