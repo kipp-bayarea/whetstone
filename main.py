@@ -4,11 +4,11 @@ from sqlsorcery import MSSQL
 
 def main():
     sql = MSSQL()
-    whetstone.Users(sql).import_all()
-    whetstone.Schools(sql).import_all()
-    whetstone.Meetings(sql).import_all()
-    whetstone.Observations(sql).import_all()
-    whetstone.Measurements(sql).import_all()
+    whetstone.Users(sql).transform_and_load()
+    whetstone.Schools(sql).transform_and_load()
+    whetstone.Meetings(sql).transform_and_load()
+    whetstone.Observations(sql).transform_and_load()
+    whetstone.Measurements(sql).transform_and_load()
 
 
 if __name__ == "__main__":

@@ -13,11 +13,15 @@ class CredentialError(Exception):
 
 class Whetstone:
     def __init__(self, sql, qa=False):
-        self.endpoint = self.__class__.__name__
-        self.table_name = f"whetstone_{self.endpoint}"
-        self.filename = f"data/{self.endpoint}.json"
+        subdomain = "api-qa" if qa else "api"
+        self.url = f"https://{subdomain}.whetstoneeducation.com"
         self.client_id = os.getenv("CLIENT_ID")
         self.client_secret = os.getenv("CLIENT_SECRET")
+        self.token = self._authorize()
+        self.endpoint = self.__class__.__name__
+        self.filename = f"data/{self.endpoint}.json"
+        self.sql = sql
+        self.tag = False
         self.columns = []
         self.dates = [
             "archivedAt",
@@ -29,11 +33,6 @@ class Whetstone:
             "lastPublished",
             "observedAt",
         ]
-        self.tag = False
-        self.sql = sql
-        subdomain = "api-qa" if qa else "api"
-        self.url = f"https://{subdomain}.whetstoneeducation.com"
-        self.token = self._authorize()
 
     def _authorize(self):
         auth_url = f"{self.url}/auth/client/token"
@@ -67,8 +66,9 @@ class Whetstone:
         else:
             raise Exception(f"Failed to list {self.endpoint}")
 
-    def _write_to_db(self, df):
-        self.sql.insert_into(self.table_name, df, chunksize=10000, if_exists="replace")
+    def _write_to_db(self, df, model):
+        tablename = f"whetstone_{model}"
+        self.sql.insert_into(tablename, df, chunksize=10000, if_exists="replace")
 
     def _write_to_json(self, data):
         if os.path.exists(self.filename):
@@ -76,40 +76,24 @@ class Whetstone:
         with open(self.filename, "w") as f:
             json.dump(data, f, indent=2)
 
-    def import_all(self):
+    def transform_and_load(self):
         data = self.get_all()
-        self._write_to_json(data)
-        self.additional_imports(data)
-        df = self._process_and_filter_records(data)
-        self._write_to_db(df)
+        models = self._preprocess_records(data)
+        for model, records in models.items():
+            df = pd.DataFrame(records)
+            df = df.astype("object")
+            df = self._convert_dates(df)
+            df.rename(columns={"_id": "id"}, inplace=True)
+            self._write_to_db(df, model)
 
     def _preprocess_records(self, records):
         return records
-
-    def _process_and_filter_records(self, records):
-        new_records = self._preprocess_records(records)
-        df = pd.json_normalize(new_records)
-        df = df.reindex(columns=self.columns)
-        df = df.astype("object")
-        df = self._convert_dates(df)
-        df.rename(columns={"_id": "id"}, inplace=True)
-        return df
 
     def _convert_dates(self, df):
         date_types = {col: "datetime64[ns]" for col in df.columns if col in self.dates}
         if date_types:
             df = df.astype(date_types)
         return df
-
-    def additional_imports(self, records):
-        pass
-
-    def extract_subrecords(self, subrecords, tablename):
-        df = pd.DataFrame(subrecords)
-        self._convert_dates(df)
-        self.sql.insert_into(
-            f"whetstone_{tablename}", df, chunksize=10000, if_exists="replace"
-        )
 
 
 class Users(Whetstone):
@@ -135,10 +119,13 @@ class Users(Whetstone):
         ]
 
     def _preprocess_records(self, records):
+        models = {"Users": []}
         for record in records:
             record["school"] = record.get("defaultInformation").get("school")
             record["course"] = record.get("defaultInformation").get("course")
-        return records
+            user = {k: v for (k, v) in record.items() if k in self.columns}
+            models["Users"].append(user)
+        return models
 
 
 class Schools(Whetstone):
@@ -165,49 +152,47 @@ class Schools(Whetstone):
             "lastModified",
         ]
 
-    def additional_imports(self, records):
-        group_records = []
-        group_member_records = []
+    def _preprocess_records(self, records):
+        models = {"Schools": [], "ObservationGroups": [], "ObservationGroupMembers": []}
         for record in records:
-            school = record["_id"]
-            observationGroups = record.get("observationGroups")
-            if observationGroups:
-                for group in observationGroups:
-                    record = {
-                        "id": group.get("_id"),
-                        "name": group.get("name"),
-                        "school": school,
-                        "lastModified": group.get("lastModified"),
+            record_id = record.get("_id")
+            school = {k: v for (k, v) in record.items() if k in self.columns}
+            models["Schools"].append(school)
+            groups = record.get("observationGroups")
+            if groups:
+                for group in groups:
+                    observers = self._extract_group_members(
+                        group, "observers", record_id
+                    )
+                    models["ObservationGroupMembers"].extend(observers)
+                    observees = self._extract_group_members(
+                        group, "observees", record_id
+                    )
+                    models["ObservationGroupMembers"].extend(observees)
+
+                groups = [
+                    {
+                        "id": item.get("_id"),
+                        "name": item.get("name"),
+                        "school": record_id,
+                        "lastModified": item.get("lastModified"),
                     }
-                    group_records.append(record)
+                    for item in groups
+                ]
+                models["ObservationGroups"].extend(groups)
+        return models
 
-                    observers = group.get("observers")
-                    observees = group.get("observees")
-
-                    if observers:
-                        for member in observers:
-                            member_record = {
-                                "id": member.get("_id"),
-                                "name": member.get("name"),
-                                "role": "observer",
-                                "observationGroup": group.get("_id"),
-                                "school": school,
-                            }
-                            group_member_records.append(member_record)
-
-                    if observees:
-                        for member in observees:
-                            member_record = {
-                                "id": member.get("_id"),
-                                "name": member.get("name"),
-                                "role": "observee",
-                                "observationGroup": group.get("_id"),
-                                "school": school,
-                            }
-                            group_member_records.append(member_record)
-
-        self.extract_subrecords(group_records, "ObservationGroups")
-        self.extract_subrecords(group_member_records, "ObservationGroupMembers")
+    def _extract_group_members(self, group, role, record_id):
+        members = [
+            dict(
+                item,
+                school=record_id,
+                role=role[:-1],
+                observationGroup=group.get("_id"),
+            )
+            for item in group.get(role)
+        ]
+        return members
 
 
 class Meetings(Whetstone):
@@ -232,39 +217,39 @@ class Meetings(Whetstone):
         ]
 
     def _preprocess_records(self, records):
+        models = {
+            "Meetings": [],
+            "MeetingObservations": [],
+            "MeetingParticipants": [],
+            "MeetingAdditionalFields": [],
+        }
         for record in records:
+            record_id = record.get("_id")
             record["creator"] = record.get("creator").get("_id")
-        return records
+            meeting = {k: v for (k, v) in record.items() if k in self.columns}
+            models["Meetings"].append(meeting)
 
-    def additional_imports(self, records):
-        observation_records = []
-        participant_records = []
-        additional_field_records = []
-        for record in records:
             observations = record.get("observations")
             if observations:
-                for observation in observations:
-                    observation_record = {
-                        "meeting": record.get("_id"),
-                        "observation": observation,
-                    }
-                    observation_records.append(observation_record)
+                observations = [
+                    dict(meeting=record_id, observation=observation)
+                    for observation in observations
+                ]
+                models["MeetingObservations"].extend(observations)
 
             participants = record.get("participants")
             if participants:
-                for participant in participants:
-                    participant["meeting"] = record.get("_id")
-                    participant_records.append(participant)
+                participants = [dict(item, meeting=record_id) for item in participants]
+                models["MeetingParticipants"].extend(participants)
 
             additional_fields = record.get("additionalFields")
             if additional_fields:
-                for field in additional_fields:
-                    field["meeting"] = record.get("_id")
-                    additional_field_records.append(field)
+                additional_fields = [
+                    dict(item, meeting=record_id) for item in additional_fields
+                ]
+                models["MeetingAdditionalFields"].extend(additional_fields)
 
-        self.extract_subrecords(observation_records, "MeetingObservations")
-        self.extract_subrecords(participant_records, "MeetingParticipants")
-        self.extract_subrecords(additional_field_records, "MeetingAdditionalFields")
+        return models
 
 
 class Observations(Whetstone):
@@ -299,32 +284,41 @@ class Observations(Whetstone):
             "scoreAveragedByStrand",
         ]
 
-    def additional_imports(self, records):
-        score_records = []
-        note_records = []
+    def _preprocess_records(self, records):
+        models = {
+            "Observations": [],
+            "ObservationScores": [],
+            "ObservationMagicNotes": [],
+        }
         for record in records:
-            observation_scores = record.get("observationScores")
-            if observation_scores:
-                for score in observation_scores:
-                    score_record = {
-                        "observation": record.get("_id"),
-                        "measurement": score.get("measurement"),
-                        "measurementGroup": score.get("measurementGroup"),
-                        "valueScore": score.get("valueScore"),
-                        "valueText": score.get("valueText"),
-                        "percentage": score.get("percentage"),
-                        "lastModified": score.get("lastModified"),
+            record_id = record.get("_id")
+            observation = {
+                k: v["_id"] if type(v) is dict else v
+                for (k, v) in record.items()
+                if k in self.columns
+            }
+            models["Observations"].append(observation)
+            scores = record.get("observationScores")
+
+            if scores:
+                scores = [
+                    {
+                        "observation": record_id,
+                        "measurement": item.get("measurement"),
+                        "measurementGroup": item.get("measurementGroup"),
+                        "valueScore": item.get("valueScore"),
+                        "valueText": item.get("valueText"),
+                        "percentage": item.get("percentage"),
+                        "lastModified": item.get("lastModified"),
                     }
-                    score_records.append(score_record)
-
-            magic_notes = record.get("magicNotes")
-            if magic_notes:
-                for note in magic_notes:
-                    note["observation"] = record.get("_id")
-                    note_records.append(note)
-
-        self.extract_subrecords(score_records, "ObservationScores")
-        self.extract_subrecords(note_records, "ObservationMagicNotes")
+                    for item in scores
+                ]
+                models["ObservationScores"].extend(scores)
+            notes = record.get("magicNotes")
+            if notes:
+                notes = [dict(item, observation=record_id) for item in notes]
+                models["ObservationMagicNotes"].extend(notes)
+        return models
 
 
 class Measurements(Whetstone):
@@ -344,13 +338,15 @@ class Measurements(Whetstone):
             "rowStyle",
         ]
 
-    def additional_imports(self, records):
-        measurement_options_records = []
+    def _preprocess_records(self, records):
+        models = {"Measurements": [], "MeasurementOptions": []}
         for record in records:
-            measurement = record.get("_id")
+            record_id = record.get("_id")
+            measurement = {k: v for (k, v) in record.items() if k in self.columns}
+            models["Measurements"].append(measurement)
             options = record.get("measurementOptions")
             if options:
-                options = [dict(item, measurment=measurement) for item in options]
-                measurement_options_records.extend(options)
-        self.extract_subrecords(measurement_options_records, "MeasurementOptions")
+                options = [dict(item, measurement=record_id) for item in options]
+                models["MeasurementOptions"].extend(options)
+        return models
 
