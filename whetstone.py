@@ -1,5 +1,6 @@
 import os
 import json
+import logging
 import requests
 import base64
 import pandas as pd
@@ -77,6 +78,9 @@ class Whetstone:
         response = requests.get(endpoint_url, headers=headers)
         if response.status_code == 200:
             response_json = response.json()
+            logging.debug(
+                f"Returned {len(response_json['data'])} records from {self.endpoint}"
+            )
             return response_json["data"]
         else:
             raise Exception(f"Failed to list {self.endpoint}")
@@ -84,6 +88,7 @@ class Whetstone:
     def _write_to_db(self, df, model):
         """Writes the data into the related table"""
         tablename = f"whetstone_{model}"
+        logging.debug(f"{model}: inserting {len(df)} records into {tablename}.")
         self.sql.insert_into(tablename, df, chunksize=10000, if_exists="replace")
 
     def _write_to_json(self, data):
@@ -99,6 +104,7 @@ class Whetstone:
         models = self._preprocess_records(data)
         for model, records in models.items():
             if records:
+                logging.debug(f"{model}: processing {len(records)} records.")
                 df = pd.DataFrame(records)
                 df = df.astype("object")
                 df = self._convert_dates(df)
