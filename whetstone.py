@@ -246,8 +246,9 @@ class Meetings(Whetstone):
             additional_fields = record.get("additionalFields")
             if additional_fields:
                 additional_fields = [
-                    dict(item, meeting=record_id) for item in additional_fields
+                    dict(item, meeting=record_id, content=str(item.get("content"))) for item in additional_fields
                 ]
+
                 models["MeetingAdditionalFields"].extend(additional_fields)
 
         return models
