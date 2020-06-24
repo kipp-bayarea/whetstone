@@ -1,8 +1,10 @@
 import logging
+import os
 import sys
 import traceback
 import whetstone
 from sqlsorcery import MSSQL
+from mailer import Mailer
 
 
 def configure_logging():
@@ -67,3 +69,5 @@ if __name__ == "__main__":
     except Exception as e:
         logging.exception(e)
         error_message = traceback.format_exc()
+    if os.getenv("ENABLE_MAILER"):
+        Mailer("Whetstone Connector").notify(error_message=error_message)
