@@ -80,11 +80,12 @@ class Whetstone:
         data = self.get_all()
         models = self._preprocess_records(data)
         for model, records in models.items():
-            df = pd.DataFrame(records)
-            df = df.astype("object")
-            df = self._convert_dates(df)
-            df.rename(columns={"_id": "id"}, inplace=True)
-            self._write_to_db(df, model)
+            if records:
+                df = pd.DataFrame(records)
+                df = df.astype("object")
+                df = self._convert_dates(df)
+                df.rename(columns={"_id": "id"}, inplace=True)
+                self._write_to_db(df, model)
 
     def _preprocess_records(self, records):
         return records
@@ -483,4 +484,27 @@ class Rubrics(Whetstone):
             ]
             models["RubricMeasurementGroups"].extend(groups)
         return models
+
+
+class Tag(Whetstone):
+    def __init__(self, sql, tag_type):
+        super().__init__(sql)
+        self.columns = ["_id", "name", "district", "created", "lastModified"]
+        self.tag = True
+        self.modelname = self._snake_to_camel(tag_type)
+        self.endpoint = tag_type.replace("_", "")
+
+    def _preprocess_records(self, records):
+        models = {self.modelname: []}
+        for record in records:
+            abbreviation = record.get("abbreviation")
+            if abbreviation:
+                record["abbreviation"] = abbreviation
+                self.columns.append("abbreviation")
+            model = {k: v for (k, v) in record.items() if k in self.columns}
+            models[self.modelname].append(model)
+        return models
+
+    def _snake_to_camel(self, name):
+        return "".join(word.title() for word in name.split("_"))
 
