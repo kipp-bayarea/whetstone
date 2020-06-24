@@ -432,3 +432,55 @@ class Informals(Whetstone):
                 models["InformalTags"].extend(tags)
         return models
 
+
+class Rubrics(Whetstone):
+    def __init__(self, sql):
+        super().__init__(sql)
+        self.columns = [
+            "_id",
+            "scaleMin",
+            "scaleMax",
+            "isPrivate",
+            "name",
+            "district",
+            "created",
+            "lastModified",
+            "isPublished",
+        ]
+
+    def _preprocess_records(self, records):
+        models = {
+            "Rubrics": [],
+            "RubricMeasurements": [],
+            "RubricMeasurementGroups": [],
+        }
+        for record in records:
+            record_id = record.get("_id")
+            creator = record.get("creator") or {}
+            record["creator"] = creator.get("_id")
+            rubric = {k: v for (k, v) in record.items() if k in self.columns}
+            models["Rubrics"].append(rubric)
+
+        groups = record.get("measurementGroups")
+        if groups:
+            for group in groups:
+                group_id = group.get("_id")
+                measurements = group.get("measurements")
+                if measurements:
+                    measurements = [
+                        dict(item, rubric=record_id, measurement_group=group_id)
+                        for item in measurements
+                    ]
+                models["RubricMeasurements"].extend(measurements)
+            groups = [
+                dict(
+                    id=item.get("_id"),
+                    name=item.get("name"),
+                    key=item.get("key"),
+                    rubric=record_id,
+                )
+                for item in groups
+            ]
+            models["RubricMeasurementGroups"].extend(groups)
+        return models
+
