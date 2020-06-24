@@ -350,3 +350,54 @@ class Measurements(Whetstone):
                 models["MeasurementOptions"].extend(options)
         return models
 
+
+class Assignments(Whetstone):
+    def __init__(self, sql):
+        super().__init__(sql)
+        self.columns = [
+            "_id",
+            "excludeFromBank",
+            "locked",
+            "private",
+            "coachingActivity",
+            "creator",
+            "user",
+            "name",
+            "type",
+            "parent",
+            "grade",
+            "course",
+            "created",
+            "lastModified",
+            "progress_percent",
+            "progress_assigner",
+            "progress_justification",
+            "progress_date",
+        ]
+
+    def _preprocess_records(self, records):
+        models = {"Assignments": [], "AssignmentTags": []}
+        for record in records:
+            record_id = record.get("_id")
+            record["creator"] = record.get("creator").get("_id")
+            record["user"] = record.get("user").get("_id")
+            course = record.get("course") or {}
+            record["course"] = course.get("_id")
+            grade = record.get("grade") or {}
+            record["grade"] = grade.get("_id")
+            parent = record.get("parent") or {}
+            record["parent"] = parent.get("_id")
+            progress = record.get("progress")
+            if progress:
+                record["progress_percent"] = progress.get("percent")
+                record["progress_assigner"] = progress.get("assigner")
+                record["progress_justification"] = progress.get("justification")
+                record["progress_date"] = progress.get("date")
+            assignment = {k: v for (k, v) in record.items() if k in self.columns}
+            models["Assignments"].append(assignment)
+
+            tags = record.get("tags")
+            if tags:
+                tags = [dict(item, assignment=record_id) for item in tags]
+                models["AssignmentTags"].extend(tags)
+        return models
