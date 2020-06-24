@@ -153,7 +153,7 @@ class Users(Whetstone):
 
 
 class Schools(Whetstone):
-    def __init__(self, sql, qa=False)):
+    def __init__(self, sql, qa=False):
         super().__init__(sql)
         self.columns = [
             "_id",
@@ -221,7 +221,7 @@ class Schools(Whetstone):
 
 
 class Meetings(Whetstone):
-    def __init__(self, sql, qa=False)):
+    def __init__(self, sql, qa=False):
         super().__init__(sql)
         self.columns = [
             "_id",
@@ -270,7 +270,8 @@ class Meetings(Whetstone):
             additional_fields = record.get("additionalFields")
             if additional_fields:
                 additional_fields = [
-                    dict(item, meeting=record_id, content=str(item.get("content"))) for item in additional_fields
+                    dict(item, meeting=record_id, content=str(item.get("content")))
+                    for item in additional_fields
                 ]
 
                 models["MeetingAdditionalFields"].extend(additional_fields)
@@ -279,7 +280,7 @@ class Meetings(Whetstone):
 
 
 class Observations(Whetstone):
-    def __init__(self, sql, qa=False)):
+    def __init__(self, sql, qa=False):
         super().__init__(sql)
         self.columns = [
             "_id",
@@ -348,7 +349,7 @@ class Observations(Whetstone):
 
 
 class Measurements(Whetstone):
-    def __init__(self, sql, qa=False)):
+    def __init__(self, sql, qa=False):
         super().__init__(sql)
         self.columns = [
             "_id",
@@ -378,7 +379,7 @@ class Measurements(Whetstone):
 
 
 class Assignments(Whetstone):
-    def __init__(self, sql, qa=False)):
+    def __init__(self, sql, qa=False):
         super().__init__(sql)
         self.columns = [
             "_id",
@@ -430,7 +431,7 @@ class Assignments(Whetstone):
 
 
 class Informals(Whetstone):
-    def __init__(self, sql, qa=False)):
+    def __init__(self, sql, qa=False):
         super().__init__(sql)
         self.columns = [
             "_id",
@@ -460,7 +461,7 @@ class Informals(Whetstone):
 
 
 class Rubrics(Whetstone):
-    def __init__(self, sql, qa=False)):
+    def __init__(self, sql, qa=False):
         super().__init__(sql)
         self.columns = [
             "_id",
@@ -512,7 +513,7 @@ class Rubrics(Whetstone):
 
 
 class Tag(Whetstone):
-    def __init__(self, sql, tag_type, qa=False)):
+    def __init__(self, sql, tag_type, qa=False):
         super().__init__(sql)
         self.columns = ["_id", "name", "district", "created", "lastModified"]
         self.tag = True
