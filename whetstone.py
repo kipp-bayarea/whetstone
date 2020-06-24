@@ -401,3 +401,34 @@ class Assignments(Whetstone):
                 tags = [dict(item, assignment=record_id) for item in tags]
                 models["AssignmentTags"].extend(tags)
         return models
+
+
+class Informals(Whetstone):
+    def __init__(self, sql):
+        super().__init__(sql)
+        self.columns = [
+            "_id",
+            "shared",
+            "private",
+            "user",
+            "creator",
+            "district",
+            "created",
+            "lastModified",
+        ]
+
+    def _preprocess_records(self, records):
+        models = {"Informals": [], "InformalTags": []}
+        for record in records:
+            record_id = record.get("_id")
+            record["creator"] = record.get("creator").get("_id")
+            record["user"] = record.get("user").get("_id")
+            informal = {k: v for (k, v) in record.items() if k in self.columns}
+            models["Informals"].append(informal)
+
+            tags = record.get("tags")
+            if tags:
+                tags = [dict(item, assignment=record_id) for item in tags]
+                models["InformalTags"].extend(tags)
+        return models
+
