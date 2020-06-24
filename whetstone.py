@@ -12,6 +12,18 @@ class CredentialError(Exception):
 
 
 class Whetstone:
+    """
+    A generic endpoint, intended to be overwritten by a subclass to implement details
+    around what URLs to call and how to process incoming data.
+    
+    Params:
+        sql:    A SQLSorcery object to read and write from the DB.
+        qa:     (Optional) Set to TRUE to query the sandbox api instead of production.
+
+    Returns:
+        An instance of the endpoint that can be called to make a request.
+    """
+
     def __init__(self, sql, qa=False):
         subdomain = "api-qa" if qa else "api"
         self.url = f"https://{subdomain}.whetstoneeducation.com"
@@ -35,6 +47,7 @@ class Whetstone:
         ]
 
     def _authorize(self):
+        """Returns a client token to authorize requests."""
         auth_url = f"{self.url}/auth/client/token"
         headers = {"Authorization": self._encode_credentials()}
         response = requests.post(auth_url, headers=headers)
@@ -46,6 +59,7 @@ class Whetstone:
             raise CredentialError
 
     def _encode_credentials(self):
+        """Encodes the CLIENT_ID and CLIENT_SECRET to Base64 in the format expected."""
         if self.client_id is None or self.client_secret is None:
             raise CredentialError
         client_credential_string = self.client_id + ":" + self.client_secret
@@ -54,6 +68,7 @@ class Whetstone:
         return "Basic " + encoded_credentials_string
 
     def get_all(self):
+        """Returns the json request data for the specified endpoint."""
         if self.tag:
             endpoint_url = f"{self.url}/external/generic-tags/{self.endpoint}"
         else:
@@ -67,16 +82,19 @@ class Whetstone:
             raise Exception(f"Failed to list {self.endpoint}")
 
     def _write_to_db(self, df, model):
+        """Writes the data into the related table"""
         tablename = f"whetstone_{model}"
         self.sql.insert_into(tablename, df, chunksize=10000, if_exists="replace")
 
     def _write_to_json(self, data):
+        """Outputs the request data to a local json file for inspection."""
         if os.path.exists(self.filename):
             os.remove(self.filename)
         with open(self.filename, "w") as f:
             json.dump(data, f, indent=2)
 
     def transform_and_load(self):
+        """Formats raw request data into relational table models and inserts into the db."""
         data = self.get_all()
         models = self._preprocess_records(data)
         for model, records in models.items():
@@ -88,9 +106,14 @@ class Whetstone:
                 self._write_to_db(df, model)
 
     def _preprocess_records(self, records):
+        """
+        Any preprocessing that needs to be done to records before they are mapped to
+        models. Intended to be overridden by subclasses as needed.
+        """
         return records
 
     def _convert_dates(self, df):
+        """Convert date columns to the actual date time."""
         date_types = {col: "datetime64[ns]" for col in df.columns if col in self.dates}
         if date_types:
             df = df.astype(date_types)
@@ -184,6 +207,7 @@ class Schools(Whetstone):
         return models
 
     def _extract_group_members(self, group, role, record_id):
+        """Helper function for formatting ObservationGroupMember records."""
         members = [
             dict(
                 item,
@@ -507,5 +531,9 @@ class Tag(Whetstone):
         return models
 
     def _snake_to_camel(self, name):
+        """
+        Converts a string from snake_case to CamelCase. Necessary for conversion
+        between string formats needed in endpoint URLs and table names.
+        """
         return "".join(word.title() for word in name.split("_"))
 
