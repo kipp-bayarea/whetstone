@@ -533,18 +533,18 @@ class Tag(Whetstone):
         super().__init__(sql)
         self.columns = ["_id", "name", "district", "created", "lastModified"]
         self.tag = True
-        self.modelname = self._snake_to_camel(tag_type)
+        self.model_name = self._snake_to_camel(tag_type)
         self.endpoint = tag_type.replace("_", "")
 
     def _preprocess_records(self, records):
-        models = {self.modelname: []}
+        models = {self.model_name: []}
         for record in records:
             abbreviation = record.get("abbreviation")
             if abbreviation:
                 record["abbreviation"] = abbreviation
                 self.columns.append("abbreviation")
             model = {k: v for (k, v) in record.items() if k in self.columns}
-            models[self.modelname].append(model)
+            models[self.model_name].append(model)
         return models
 
     def _snake_to_camel(self, name):
