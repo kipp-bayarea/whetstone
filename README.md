@@ -1,113 +1,57 @@
-# Whetstone
-Access teacher observation data from Whetstone via REST API.
+# whetstone
+
+A data pipeline that pulls teacher observation data from Whetstone Education into a relational database for analysis.
+
+## Dependencies:
+
+- Python3.7
+- [Pipenv](https://pipenv.readthedocs.io/en/latest/)
+- [Docker](https://www.docker.com/)
 
 ## Getting Started
-### Requirements
-* Python 3+
 
-### Installation
-From command line run the following command
+### Setup Environment
+
+1. Clone this repo
+
 ```
-pip install git+https://github.com/KIPPDC/whetstone.git
-```
-
-### Parameters
-* *apikey* (String) - A valid API key taken from the Whetstone user settings found at https://app.whetstoneeducation.com/me. **Note: You must be a Super Admin in Whetstone to access a functional API key.**
-
-## Usage
-Use the methods below in this library
-### Authenticate(apikey)
-Get access token from Whetstone in order to make API calls.
-
-### GetRequest(object, token, apikey, payload)
-Get record level response of a specific Whetstone object. The output of this call is a JSON object.
-```json
-[
-  {
-    "object":   "users",
-    "rowcount": "2",
-    "records":  [
-      {"_id": "8921j32hsjad8", "email": "user@whetstone.com"},
-      {"_id": "823122jkls89ff", "email": "user2@whetstone.com"}
-    ]
-  },
-
-]
+git clone https://github.com/kipp-bayarea/whetstone.git
 ```
 
-Available HTTPRequest objects:
-* users
-* observations
-* meetings
-* meeting_modules
-* schools
-* assignments
-* scores
-* informals
-* rubrics
-* measurements
-* measurement_groups
-* measurement_types
-* tags
-* grade
-* courses
-* period
-* track
-* goaltype
-* action_step_options
-* files
-* videos
-* observation_tag_1
-* observation_tag_2
-* observation_tag_3
-* observation_tag_4
-* observation_type
-* observation_modules
-* observation_label
-* collaboration_type
-* plu_event_location
-* plu_event_type
-* plu_series
-* plu_content_area
-* video_type
-* meeting_tag_1
-* meeting_tag_2'
-* meeting_tag_3
-* meeting_tag_4
-* goal_options
-* user_tag_1
-* user_tag_2
-* user_tag_3
-* user_tag_4
-* user_tag_5
-* user_tag_6
-* user_tag_7
-* user_tag_8
-* rubric_tag_1
-* rubric_tag_2
-* rubric_tag_3
-* rubric_tag_4
-* event_tag_1
+2. Install dependencies
 
-### Example Usage
-```python
-from whetstone import Authenticate, HTTPRequest
+- Docker can be installed directly from the website at docker.com.
 
-# 1. Get access token using
-api_key = '123ThisIsSuperSecret'
-access_token = whetstone.Authenticate(api_key)
+3. Create .env file with project secrets
 
-# 2. Set parameters for get request using Unix time for dates
-meeting_parameters = {
-                        'created': '1514764800',
-                        'lastModified': '1514764800',
-                        'archivedAt': '1531872000'
-                      }
+```
+# Whetstone Auth Credentials
+CLIENT_ID=
+CLIENT_SECRET=
 
-# 3. Get data from Whetstone API and output JSON object(s)
-meetings = whetstone.HTTPRequest('meetings', access_token, meeting_parameters).GetData()
+# Database Credentials
+DB=
+DB_SERVER=
+DB_USER=
+DB_PWD=
+DB_SCHEMA=
+
+# Email Notifications
+ENABLE_MAILER=1
+SENDER_EMAIL=
+SENDER_PWD=
+RECIPIENT_EMAIL=
 ```
 
-## Whetstone Documentation
-View example scripts and request on Whetstone's github below
-<https://github.com/WhetstoneEducation/API>
+4. Build the container
+
+```
+$ docker build -t whetstone .
+```
+
+
+5. Running the job
+
+```
+$ docker run --rm -it whetstone
+```
