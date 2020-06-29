@@ -35,4 +35,23 @@ DB_SERVER=
 DB_USER=
 DB_PWD=
 DB_SCHEMA=
+
+# Email Notifications
+ENABLE_MAILER=1
+SENDER_EMAIL=
+SENDER_PWD=
+RECIPIENT_EMAIL=
+```
+
+4. Build the container
+
+```
+$ docker build -t whetstone .
+```
+
+
+5. Running the job
+
+```
+$ docker run --rm -it whetstone
 ```

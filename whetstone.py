@@ -1,5 +1,6 @@
 import os
 import json
+import logging
 import requests
 import base64
 import pandas as pd
@@ -69,6 +70,8 @@ class Whetstone:
 
     def get_all(self):
         """Returns the json request data for the specified endpoint."""
+        records = []
+        skip = 0
         if self.tag:
             endpoint_url = f"{self.url}/external/generic-tags/{self.endpoint}"
         else:
@@ -76,14 +79,22 @@ class Whetstone:
         headers = {"Authorization": f"Bearer {self.token}"}
         response = requests.get(endpoint_url, headers=headers)
         if response.status_code == 200:
-            response_json = response.json()
-            return response_json["data"]
+            total = response.json()["count"]
+            while skip < total:
+                page_url = f"{endpoint_url}?skip={skip}"
+                response = requests.get(page_url, headers=headers)
+                results = response.json()["data"]
+                records.extend(results)
+                skip += 100
+            logging.debug(f"Returned {len(records)} records from {self.endpoint}")
+            return records
         else:
             raise Exception(f"Failed to list {self.endpoint}")
 
     def _write_to_db(self, df, model):
         """Writes the data into the related table"""
         tablename = f"whetstone_{model}"
+        logging.debug(f"{model}: inserting {len(df)} records into {tablename}.")
         self.sql.insert_into(tablename, df, chunksize=10000, if_exists="replace")
 
     def _write_to_json(self, data):
@@ -99,6 +110,7 @@ class Whetstone:
         models = self._preprocess_records(data)
         for model, records in models.items():
             if records:
+                logging.debug(f"{model}: processing {len(records)} records.")
                 df = pd.DataFrame(records)
                 df = df.astype("object")
                 df = self._convert_dates(df)
@@ -145,8 +157,10 @@ class Users(Whetstone):
     def _preprocess_records(self, records):
         models = {"Users": []}
         for record in records:
-            record["school"] = record.get("defaultInformation").get("school")
-            record["course"] = record.get("defaultInformation").get("course")
+            default_info = record.get("defaultInformation")
+            if default_info:
+                record["school"] = default_info.get("school")
+                record["course"] = default_info.get("course")
             user = {k: v for (k, v) in record.items() if k in self.columns}
             models["Users"].append(user)
         return models

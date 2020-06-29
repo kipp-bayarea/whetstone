@@ -1,8 +1,28 @@
+import logging
+import os
+import sys
+import traceback
 import whetstone
 from sqlsorcery import MSSQL
+from mailer import Mailer
+
+
+def configure_logging():
+    logging.basicConfig(
+        handlers=[
+            logging.FileHandler(filename="data/app.log", mode="w+"),
+            logging.StreamHandler(sys.stdout),
+        ],
+        level=logging.DEBUG,
+        format="%(asctime)s | %(levelname)s: %(message)s",
+        datefmt="%Y-%m-%d %I:%M:%S%p %Z",
+    )
+    logging.getLogger("requests").setLevel(logging.ERROR)
+    logging.getLogger("urllib3").setLevel(logging.ERROR)
 
 
 def main():
+    configure_logging()
     sql = MSSQL()
     whetstone.Users(sql).transform_and_load()
     whetstone.Schools(sql).transform_and_load()
@@ -43,4 +63,11 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+        error_message = None
+    except Exception as e:
+        logging.exception(e)
+        error_message = traceback.format_exc()
+    if int(os.getenv("ENABLE_MAILER", default=0)):
+        Mailer("Whetstone Connector").notify(error_message=error_message)
