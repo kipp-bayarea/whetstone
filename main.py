@@ -69,5 +69,5 @@ if __name__ == "__main__":
     except Exception as e:
         logging.exception(e)
         error_message = traceback.format_exc()
-    if os.getenv("ENABLE_MAILER"):
+    if int(os.getenv("ENABLE_MAILER", default=0)):
         Mailer("Whetstone Connector").notify(error_message=error_message)
