@@ -36,7 +36,7 @@ class Whetstone:
         self.sql = sql
         self.tag = False
         self.columns = []
-        self.dates = [
+        self.date_columns = [
             "archivedAt",
             "created",
             "date",
@@ -126,7 +126,9 @@ class Whetstone:
 
     def _convert_dates(self, df):
         """Convert date columns to the actual date time."""
-        date_types = {col: "datetime64[ns]" for col in df.columns if col in self.dates}
+        date_types = {
+            col: "datetime64[ns]" for col in df.columns if col in self.date_columns
+        }
         if date_types:
             df = df.astype(date_types)
         return df
