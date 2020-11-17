@@ -91,6 +91,12 @@ class Whetstone:
         else:
             raise Exception(f"Failed to list {self.endpoint}")
 
+    def get_first(self):
+        endpoint_url = f"{self.url}/external/{self.endpoint}"
+        headers = {"Authorization": f"Bearer {self.token}"}
+        response = requests.get(endpoint_url, headers=headers)
+        return response.json()
+
     def _write_to_db(self, df, model):
         """Writes the data into the related table"""
         tablename = f"whetstone_{model}"
