@@ -44,8 +44,6 @@ def main():
         "assignment_types",
         "assignment_presets",
         "user_types",
-        "coaching_move_types",
-        "collaboration_types",
         "measurement_types",
         "meeting_modules",
         "meeting_standards",

@@ -266,6 +266,7 @@ class Meetings(Whetstone):
         }
         for record in records:
             record_id = record.get("_id")
+            record["type"] = record.get("type").get("_id")
             record["creator"] = record.get("creator").get("_id")
             meeting = {k: v for (k, v) in record.items() if k in self.columns}
             models["Meetings"].append(meeting)
